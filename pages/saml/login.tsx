@@ -11,6 +11,7 @@ export default function Login() {
   const [state, setState] = useState({
     username: 'jackson',
     domain: 'example.com',
+    dsid: '',
     acsUrl: 'https://sso.eu.boxyhq.com/api/oauth/saml',
     audience: 'https://saml.boxyhq.com',
   });
@@ -40,7 +41,7 @@ export default function Login() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const { username, domain } = state;
+    const { username, domain, dsid } = state;
 
     const response = await fetch(authUrl, {
       method: 'POST',
@@ -49,6 +50,7 @@ export default function Login() {
       },
       body: JSON.stringify({
         email: `${username}@${domain}`,
+        dsid,
         id,
         audience: audience || state.audience,
         acsUrl: acsUrl || state.acsUrl,
@@ -149,6 +151,22 @@ export default function Login() {
                       <option value='example.com'>@example.com</option>
                       <option value='example.org'>@example.org</option>
                     </select>
+                  </div>
+                  <div className='form-control'>
+                    <label className='label'>
+                      <span className='label-text font-bold'>DSID</span>
+                    </label>
+                    <input
+                      name='dsid'
+                      id='dsid'
+                      autoComplete='off'
+                      type='text'
+                      placeholder='Enter DSID'
+                      value={state.dsid}
+                      onChange={handleChange}
+                      className='input input-bordered'
+                      title='Please provide a DSID value'
+                    />
                   </div>
                   <div className='form-control col-span-2'>
                     <label className='label'>

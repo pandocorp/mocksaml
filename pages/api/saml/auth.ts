@@ -7,7 +7,7 @@ import { getEntityId } from 'lib/entity-id';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
-    const { email, audience, acsUrl, id, relayState } = req.body;
+    const { email, audience, acsUrl, id, relayState, dsid } = req.body;
 
     if (!email.endsWith('@example.com') && !email.endsWith('@example.org')) {
       res.status(403).send(`${email} denied access`);
@@ -21,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       email,
       firstName: userName,
       lastName: userName,
+      dsid: dsid || undefined,
     };
 
     const xmlSigned = await saml.createSAMLResponse({
@@ -30,6 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       requestId: id,
       claims: {
         email: user.email,
+        dsid: user.dsid,
         raw: user,
       },
       privateKey: config.privateKey,
