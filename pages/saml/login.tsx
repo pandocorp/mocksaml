@@ -9,11 +9,11 @@ export default function Login() {
 
   const authUrl = namespace ? `/api/namespace/${namespace}/saml/auth` : '/api/saml/auth';
   const [state, setState] = useState({
-    username: 'jackson',
+    username: 'Loga',
     domain: 'example.com',
-    dsid: '',
-    acsUrl: 'https://sso.eu.boxyhq.com/api/oauth/saml',
-    audience: 'https://saml.boxyhq.com',
+    dsid: '731232425',
+    acsUrl: 'https://cf.pandostaging.in/cl-sso/api/login/sso/callback/azure',
+    audience: 'https://cf.pandostaging.in',
   });
 
   const acsUrlInp = useRef<HTMLInputElement>(null);
@@ -176,7 +176,7 @@ export default function Login() {
                       id='password'
                       autoComplete='off'
                       type='password'
-                      defaultValue='samlstrongpassword'
+                      defaultValue='iamthemaster'
                       className='input input-bordered'
                     />
                     <label className='label'>
@@ -187,14 +187,32 @@ export default function Login() {
                 </div>
               </form>
             </div>
-            <div className='alert alert-info'>
-              <div>
-                <span className='text-sm text-white'>
-                  This is a simulated login screen, feel free to pick any username but you are restricted to
-                  two domains example.com and example.org. But this should allow you to test all combinations
-                  of your authentication and user modelling.
-                </span>
-              </div>
+            <div className='flex flex-col space-y-3 md:flex-row md:space-x-3 md:space-y-0'>
+              <a
+                href={`/api${namespace ? `/namespace/${namespace}` : ''}/saml/metadata?download=true`}
+                className='btn-primary btn-active btn flex-1'>
+                <svg
+                  className='mr-1 inline-block h-6 w-6'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                  stroke='currentColor'
+                  aria-hidden
+                  strokeWidth='2'>
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4'
+                  />
+                </svg>
+                Download Metadata
+              </a>
+              <a
+                href={`/api${namespace ? `/namespace/${namespace}` : ''}/saml/metadata`}
+                className='btn-outline btn-primary btn flex-1'
+                target='_blank'
+                rel='noopener noreferrer'>
+                Metadata URL
+              </a>
             </div>
           </div>
         </div>

@@ -1,6 +1,5 @@
 import Head from 'next/head';
 import type { ReactNode } from 'react';
-import Header from './Header';
 
 type LayoutProps = {
   children: ReactNode;
@@ -34,8 +33,7 @@ export default function Layout({ children }: LayoutProps) {
         <meta name='twitter:description' content={description} />
         <meta name='twitter:image' content={ogImage} />
       </Head>
-      <Header />
-      <main className='h-[calc(100%_-_80px)] overflow-auto py-5'>{children}</main>
+      <main className='h-full overflow-auto py-5'>{children}</main>
     </>
   );
 }
