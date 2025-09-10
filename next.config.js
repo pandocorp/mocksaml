@@ -1,15 +1,9 @@
 /** @type {import('next').NextConfig} */
-module.exports = {
+const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        fs: false,
-        zlib: false,
-      };
-    }
+  images: {
+    unoptimized: true
+  }
+}
 
-    return config;
-  },
-};
+module.exports = nextConfig

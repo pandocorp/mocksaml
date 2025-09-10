@@ -4,45 +4,15 @@
 
 html,
 body {
-  padding: 0;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell,
-    'Helvetica Neue', sans-serif;
-  height: 100%;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
 }
 
 #__next {
-  height: 100%;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-@layer components {
-  .alert {
-    @apply rounded;
-  }
-
-  .input {
-    @apply rounded;
-  }
-
-  .textarea {
-    @apply rounded;
-  }
-
-  .select {
-    @apply rounded;
-  }
-
-  .btn {
-    @apply rounded;
-    text-transform: none;
-  }
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
 }

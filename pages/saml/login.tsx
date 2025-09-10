@@ -2,6 +2,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 
 export default function Login() {
   const router = useRouter();
@@ -10,11 +11,12 @@ export default function Login() {
   const authUrl = namespace ? `/api/namespace/${namespace}/saml/auth` : '/api/saml/auth';
   const [state, setState] = useState({
     username: 'Loga',
-    domain: 'example.com',
     dsid: '731232425',
     acsUrl: 'https://cf.pandostaging.in/cl-sso/api/login/sso/callback/azure',
     audience: 'https://cf.pandostaging.in',
   });
+
+  const domain = 'example.com';
 
   const acsUrlInp = useRef<HTMLInputElement>(null);
   const emailInp = useRef<HTMLInputElement>(null);
@@ -41,7 +43,7 @@ export default function Login() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const { username, domain, dsid } = state;
+    const { username, dsid } = state;
 
     const response = await fetch(authUrl, {
       method: 'POST',
@@ -70,153 +72,117 @@ export default function Login() {
   };
 
   return (
-    <>
+    <div className='fixed inset-0'>
       <Head>
-        <title>Mock SAML Identity Provider - Login</title>
+        <title>SAML Login</title>
       </Head>
-      <div className='flex min-h-full items-center justify-center'>
-        <div className='flex w-full max-w-xl flex-col px-3'>
-          <div className='space-y-2'>
-            <div className='border-2 p-4'>
-              <h2 className='mb-5 text-center text-2xl font-bold text-gray-900'>
-                {!acsUrl ? 'SAML IdP Login' : 'SAML SSO Login'}
-              </h2>
-              <form onSubmit={handleSubmit}>
-                <div className='grid grid-cols-2 gap-y-1 gap-x-5'>
-                  {!acsUrl ? (
-                    <div className='col-span-2'>
-                      <div className='form-control'>
-                        <label className='label'>
-                          <span className='label-text font-bold'>ACS URL</span>
-                        </label>
-                        <input
-                          type='text'
-                          className='input input-bordered'
-                          name='acsUrl'
-                          id='acsUrl'
-                          ref={acsUrlInp}
-                          autoComplete='off'
-                          placeholder='https://sso.eu.boxyhq.com/api/oauth/saml'
-                          value={state.acsUrl}
-                          onChange={handleChange}
-                        />
-                        <label className='label'>
-                          <span className='label-text-alt'>This is where we will post the SAML Response</span>
-                        </label>
-                      </div>
-                      <div className='form-control col-span-2'>
-                        <label className='label'>
-                          <span className='label-text font-bold'>Audience</span>
-                        </label>
-                        <input
-                          type='text'
-                          className='input input-bordered'
-                          name='audience'
-                          id='audience'
-                          autoComplete='off'
-                          placeholder='https://saml.boxyhq.com'
-                          value={state.audience}
-                          onChange={handleChange}
-                        />
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className='form-control'>
-                    <label className='label'>
-                      <span className='label-text font-bold'>Email</span>
-                    </label>
-                    <input
-                      name='username'
-                      id='username'
-                      ref={emailInp}
-                      autoComplete='off'
-                      type='text'
-                      placeholder='jackson'
-                      value={state.username}
-                      onChange={handleChange}
-                      className='input input-bordered'
-                      title='Please provide a mock email address'
-                    />
-                  </div>
-                  <div className='form-control'>
-                    <label className='label'>
-                      <span className='label-text font-bold'>Domain</span>
-                    </label>
-                    <select
-                      name='domain'
-                      id='domain'
-                      className='select select-bordered'
-                      onChange={handleChange}
-                      value={state.domain}>
-                      <option value='example.com'>@example.com</option>
-                      <option value='example.org'>@example.org</option>
-                    </select>
-                  </div>
-                  <div className='form-control'>
-                    <label className='label'>
-                      <span className='label-text font-bold'>DSID</span>
-                    </label>
-                    <input
-                      name='dsid'
-                      id='dsid'
-                      autoComplete='off'
-                      type='text'
-                      placeholder='Enter DSID'
-                      value={state.dsid}
-                      onChange={handleChange}
-                      className='input input-bordered'
-                      title='Please provide a DSID value'
-                    />
-                  </div>
-                  <div className='form-control col-span-2'>
-                    <label className='label'>
-                      <span className='label-text font-bold'>Password</span>
-                    </label>
-                    <input
-                      id='password'
-                      autoComplete='off'
-                      type='password'
-                      defaultValue='iamthemaster'
-                      className='input input-bordered'
-                    />
-                    <label className='label'>
-                      <span className='label-text-alt'>Any password works</span>
-                    </label>
-                  </div>
-                  <button className='btn btn-primary col-span-2 block'>Sign In</button>
-                </div>
-              </form>
-            </div>
-            <div className='flex flex-col space-y-3 md:flex-row md:space-x-3 md:space-y-0'>
-              <a
-                href={`/api${namespace ? `/namespace/${namespace}` : ''}/saml/metadata?download=true`}
-                className='btn-primary btn-active btn flex-1'>
-                <svg
-                  className='mr-1 inline-block h-6 w-6'
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'
-                  aria-hidden
-                  strokeWidth='2'>
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4'
+      <div className='h-full w-full flex items-center justify-center relative'>
+        <Image
+          src='/green-bg.jpg'
+          alt='Background'
+          fill
+          priority
+          quality={100}
+          className='object-cover z-0'
+        />
+        <div className='relative z-10 w-full max-w-md bg-white/95 backdrop-blur-sm rounded-lg shadow-xl overflow-hidden p-4 space-y-4 mx-4'>
+          <form onSubmit={handleSubmit} className='space-y-3'>
+            {!acsUrl ? (
+              <>
+                <div className='space-y-2'>
+                  <label className='block text-sm font-medium text-gray-700'>ACS URL</label>
+                  <input
+                    type='text'
+                    className='w-full px-3 py-2 text-sm border rounded-md focus:ring-1 focus:ring-emerald-500'
+                    name='acsUrl'
+                    id='acsUrl'
+                    ref={acsUrlInp}
+                    autoComplete='off'
+                    placeholder='https://sso.eu.boxyhq.com/api/oauth/saml'
+                    value={state.acsUrl}
+                    onChange={handleChange}
                   />
-                </svg>
-                Download Metadata
-              </a>
-              <a
-                href={`/api${namespace ? `/namespace/${namespace}` : ''}/saml/metadata`}
-                className='btn-outline btn-primary btn flex-1'
-                target='_blank'
-                rel='noopener noreferrer'>
-                Metadata URL
-              </a>
+                  <p className='text-xs text-gray-500'>This is where we will post the SAML Response</p>
+                </div>
+
+                <div className='space-y-2'>
+                  <label className='block text-sm font-medium text-gray-700'>Audience</label>
+                  <input
+                    type='text'
+                    className='w-full px-3 py-2 text-sm border rounded-md focus:ring-1 focus:ring-emerald-500'
+                    name='audience'
+                    id='audience'
+                    autoComplete='off'
+                    placeholder='https://saml.boxyhq.com'
+                    value={state.audience}
+                    onChange={handleChange}
+                  />
+                </div>
+              </>
+            ) : null}
+
+            <div className='grid grid-cols-2 gap-3'>
+              <div className='space-y-2'>
+                <label className='block text-sm font-medium text-gray-700'>Email</label>
+                <input
+                  name='username'
+                  id='username'
+                  ref={emailInp}
+                  autoComplete='off'
+                  type='text'
+                  placeholder='jackson'
+                  value={state.username}
+                  onChange={handleChange}
+                  className='w-full px-3 py-2 text-sm border rounded-md focus:ring-1 focus:ring-emerald-500'
+                />
+              </div>
+
+              <div className='space-y-2'>
+                <label className='block text-sm font-medium text-gray-700'>DSID</label>
+                <input
+                  name='dsid'
+                  id='dsid'
+                  autoComplete='off'
+                  type='text'
+                  placeholder='Enter DSID'
+                  value={state.dsid}
+                  onChange={handleChange}
+                  className='w-full px-3 py-2 text-sm border rounded-md focus:ring-1 focus:ring-emerald-500'
+                />
+              </div>
             </div>
-          </div>
+
+            <div className='space-y-2'>
+              <label className='block text-sm font-medium text-gray-700'>Password</label>
+              <input
+                id='password'
+                autoComplete='off'
+                type='password'
+                defaultValue='iamthemaster'
+                className='w-full px-3 py-2 text-sm border rounded-md focus:ring-1 focus:ring-emerald-500'
+              />
+              <div className='flex flex-row justify-between text-[13px] text-blue-600'>
+                <a
+                  href={`/api${namespace ? `/namespace/${namespace}` : ''}/saml/metadata?download=true`}
+                  className='hover:underline hover:text-blue-800'>
+                  Download Metadata
+                </a>
+                <a
+                  href={`/api${namespace ? `/namespace/${namespace}` : ''}/saml/metadata`}
+                  className='hover:underline hover:text-blue-800'
+                  target='_blank'
+                  rel='noopener noreferrer'>
+                  Metadata URL
+                </a>
+              </div>
+            </div>
+
+            <button className='w-full bg-black text-white text-sm font-medium py-2 rounded-md hover:bg-gray-800 transition-colors'>
+              Sign In
+            </button>
+          </form>
         </div>
       </div>
-    </>
+    </div>
   );
 }
