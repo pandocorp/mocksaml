@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       email,
       firstName: userName,
       lastName: userName,
-      dsid: dsid || undefined,
+      DSID: dsid || undefined,
     };
 
     const xmlSigned = await saml.createSAMLResponse({
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       requestId: id,
       claims: {
         email: user.email,
-        dsid: user.dsid,
+        DSID: user.DSID,
         raw: user,
       },
       privateKey: config.privateKey,
