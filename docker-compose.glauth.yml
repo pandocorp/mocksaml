@@ -1,0 +1,14 @@
+services:
+  glauth-service:
+    image: glauth/glauth
+    restart: always
+    container_name: glauth-service
+    environment:
+      - GLAUTH_CONFIG_FILE=/app/config/glauth.cfg
+    command: ["/app/glauth", "-c", "/app/config/glauth.cfg"]
+    volumes:
+      - ./glauth-config/glauth.cfg:/app/config/glauth.cfg
+    ports:
+      - 3893:3893
+      - 3894:3894
+      - 5555:5555

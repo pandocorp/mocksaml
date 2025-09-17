@@ -6,15 +6,16 @@ import Image from 'next/image';
 
 export default function Login() {
   const router = useRouter();
-  const { id, audience, acsUrl, providerName, relayState, namespace } = router.query;
+  const { id, audience, acsUrl, providerName, relayState, namespace, SAMLRequest } = router.query;
 
   const authUrl = namespace ? `/api/namespace/${namespace}/saml/auth` : '/api/saml/auth';
   const [state, setState] = useState({
     username: 'Loga',
-    dsid: '731232425',
+    dsid: '',
     acsUrl: 'https://cf.pandostaging.in/cl-sso/api/login/sso/callback/azure',
     audience: 'https://cf.pandostaging.in',
   });
+  const [isAutoAuth, setIsAutoAuth] = useState(false);
 
   const domain = 'example.com';
 
@@ -22,14 +23,67 @@ export default function Login() {
   const emailInp = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (acsUrl && emailInp.current) {
+    // Auto-authenticate if we have SAMLRequest or required params
+    if ((SAMLRequest || (acsUrl && audience && id)) && !isAutoAuth) {
+      setIsAutoAuth(true);
+      handleAutoAuth();
+    } else if (acsUrl && emailInp.current) {
       emailInp.current.focus();
       emailInp.current.select();
     } else if (acsUrlInp.current) {
       acsUrlInp.current.focus();
       acsUrlInp.current.select();
     }
-  }, [acsUrl]);
+  }, [SAMLRequest, acsUrl, audience, id, isAutoAuth]);
+
+  const handleAutoAuth = async () => {
+    try {
+      // Get profile identifier from system
+      const response = await fetch('/api/profile-identifier');
+      const { profileIdentifier } = await response.json();
+      
+      // If we have SAMLRequest, decode it to get the required params
+      let authParams: any = {
+        email: `${state.username}@${domain}`,
+        dsid: profileIdentifier || state.dsid,
+        providerName,
+        relayState,
+      };
+
+      if (SAMLRequest) {
+        // For SAMLRequest, we need to decode and extract params
+        authParams.SAMLRequest = SAMLRequest;
+      } else {
+        // For direct params
+        authParams.id = id;
+        authParams.audience = audience || state.audience;
+        authParams.acsUrl = acsUrl || state.acsUrl;
+      }
+      
+      const authResponse = await fetch(authUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(authParams),
+      });
+
+      if (authResponse.ok) {
+        const newDoc = document.open('text/html', 'replace');
+        newDoc.write(await authResponse.text());
+        newDoc.close();
+      } else if (authResponse.status === 302) {
+        // Redirect to login page if user not found in LDAP
+        window.location.href = '/saml/login';
+      } else {
+        document.write('Error in getting SAML response');
+      }
+    } catch (error) {
+      console.error('Auto-auth failed:', error);
+      // Fallback to manual login
+      setIsAutoAuth(false);
+    }
+  };
 
   const handleChange = (e: FormEvent<HTMLInputElement | HTMLSelectElement>): void => {
     const { name, value } = e.currentTarget;
@@ -70,6 +124,33 @@ export default function Login() {
       document.write('Error in getting SAML response');
     }
   };
+
+  if (isAutoAuth) {
+    return (
+      <div className='fixed inset-0'>
+        <Head>
+          <title>SAML Login - Authenticating</title>
+        </Head>
+        <div className='h-full w-full flex items-center justify-center relative'>
+          <Image
+            src='/green-bg.jpg'
+            alt='Background'
+            fill
+            priority
+            quality={100}
+            className='object-cover z-0'
+          />
+          <div className='relative z-10 w-full max-w-md bg-white/95 backdrop-blur-sm rounded-lg shadow-xl overflow-hidden p-8 mx-4 text-center'>
+            <div className='space-y-4'>
+              <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto'></div>
+              <h2 className='text-xl font-semibold text-gray-800'>Authenticating...</h2>
+              <p className='text-gray-600'>Fetching your profile and signing you in automatically</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='fixed inset-0'>
