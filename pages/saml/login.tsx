@@ -38,8 +38,8 @@ export default function Login() {
 
   const handleAutoAuth = async () => {
     try {
-      // Get profile identifier from system
-      const response = await fetch('/api/profile-identifier');
+          // Get profile identifier from system
+          const response = await fetch('/api/saml/profile-identifier');
       const { profileIdentifier } = await response.json();
       
       // If we have SAMLRequest, decode it to get the required params
