@@ -92,6 +92,59 @@ class AppleDirectoryService {
   }
 
   /**
+   * Search LDAP directory by employee ID
+   * @param employeeId - Employee ID to search for
+   * @param options - Search options
+   * @returns Promise<LDAPUser | null>
+   */
+  async searchByEmployeeId(employeeId: string, options: { attributes?: string[] } = {}): Promise<LDAPUser | null> {
+    const { attributes = ['cn', 'mail', 'uid', 'givenName', 'sn', 'displayName', 'employeeid', 'alternatedsid'] } = options;
+
+    if (!employeeId || typeof employeeId !== 'string') {
+      throw new Error('Employee ID is required and must be a string');
+    }
+
+    if (!attributes || !Array.isArray(attributes) || attributes.length === 0) {
+      throw new Error('Attributes parameter is required and must be a non-empty array.');
+    }
+
+    const client = new Client(this.ldapConfig);
+    try {
+      // Use serviceuser which has search capabilities
+      await client.bind('cn=serviceuser,dc=glauth,dc=com', '');
+      const escapedEmployeeId = this.escapeLDAP(employeeId);
+      const filter = `(employeeid=${escapedEmployeeId})`;
+      
+      const { searchEntries } = await client.search(this.ldapConfig.baseDN, {
+        scope: 'sub',
+        filter,
+        attributes,
+      });
+
+      if (searchEntries.length > 0) {
+        const entry = searchEntries[0];
+        return {
+          dn: entry.dn,
+          cn: entry.cn as string,
+          mail: entry.mail as string,
+          uid: entry.uid as string,
+          givenName: entry.givenName as string,
+          sn: entry.sn as string,
+          displayName: entry.displayName as string,
+          employeeID: entry.employeeid as string,
+          alternateDsId: entry.alternatedsid as string,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      throw new Error(`LDAP employee ID search failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      await client.unbind();
+    }
+  }
+
+  /**
    * Search LDAP directory by email
    * @param email - Email to search for
    * @param options - Search options
@@ -123,7 +176,6 @@ class AppleDirectoryService {
 
       if (searchEntries.length > 0) {
         const entry = searchEntries[0];
-        console.log('louji', entry)
         return {
           dn: entry.dn,
           cn: entry.cn as string,
@@ -174,6 +226,15 @@ export async function searchUserByProfileId(profileId: string): Promise<LDAPUser
 export async function searchUserByEmail(email: string): Promise<LDAPUser | null> {
   try {
     return await appleDirectoryService.searchByEmail(email);
+  } catch (error) {
+    console.error('LDAP search error:', error);
+    return null;
+  }
+}
+
+export async function searchUserByEmployeeId(employeeId: string): Promise<LDAPUser | null> {
+  try {
+    return await appleDirectoryService.searchByEmployeeId(employeeId);
   } catch (error) {
     console.error('LDAP search error:', error);
     return null;

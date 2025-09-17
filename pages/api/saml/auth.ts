@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import type { User } from 'types';
 import saml from '@boxyhq/saml20';
 import { getEntityId } from 'lib/entity-id';
-import { searchUserByProfileId, searchUserByEmail } from 'lib/ldap';
+import { searchUserByProfileId, searchUserByEmail, searchUserByEmployeeId } from 'lib/ldap';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
@@ -34,21 +34,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Try to get user from LDAP using profile ID (dsid) as alternateDsId
-    let ldapUser = null;
-    if (dsid) {
-      try {
-        ldapUser = await searchUserByProfileId(dsid);
-      } catch (error) {
-        console.error('LDAP search by profile ID failed:', error);
-      }
-    }
+        // Try to get user from LDAP using profile ID (dsid) as alternateDsId
+        let ldapUser = null;
+        if (dsid) {
+          try {
+            ldapUser = await searchUserByProfileId(dsid);
+          } catch (error) {
+            console.error('LDAP search by profile ID failed:', error);
+          }
+        }
 
-    // If no user found with alternateDsId, redirect to login page
-    if (!ldapUser) {
-      res.status(302).redirect('/saml/login');
-      return;
-    }
+        // If no user found with alternateDsId, try searching by employeeid
+        if (!ldapUser && dsid) {
+          try {
+            ldapUser = await searchUserByEmployeeId(dsid);
+          } catch (error) {
+            console.error('LDAP search by employee ID failed:', error);
+          }
+        }
+
+        // If no user found with either method, redirect to login page
+        if (!ldapUser) {
+          res.status(302).redirect('/saml/login');
+          return;
+        }
 
     // Use LDAP data and replace dsid with employeeID
     const userId = ldapUser.uid || createHash('sha256').update(email).digest('hex');
