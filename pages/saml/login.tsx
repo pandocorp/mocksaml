@@ -256,7 +256,7 @@ export default function Login() {
         </Head>
         <div className='h-full w-full flex items-center justify-center relative'>
           <Image
-            src='/green-bg.jpg'
+            src='/api/saml/bg-image'
             alt='Background'
             fill
             priority
@@ -282,7 +282,7 @@ export default function Login() {
       </Head>
       <div className='h-full w-full flex items-center justify-center relative'>
         <Image
-          src='/green-bg.jpg'
+          src='/api/saml/bg-image'
           alt='Background'
           fill
           priority
