@@ -63,7 +63,6 @@ class AppleDirectoryService {
       const filter = `(alternatedsid=${escapedDsId})`;
       
       const { searchEntries } = await client.search(this.ldapConfig.baseDN, {
-        scope: 'sub',
         filter,
         attributes,
       });
@@ -116,7 +115,6 @@ class AppleDirectoryService {
       const filter = `(employeeid=${escapedEmployeeId})`;
       
       const { searchEntries } = await client.search(this.ldapConfig.baseDN, {
-        scope: 'sub',
         filter,
         attributes,
       });
@@ -169,7 +167,6 @@ class AppleDirectoryService {
       const filter = `(mail=${escapedEmail})`;
       
       const { searchEntries } = await client.search(this.ldapConfig.baseDN, {
-        scope: 'sub',
         filter,
         attributes,
       });
