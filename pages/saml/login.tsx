@@ -23,7 +23,7 @@ export default function Login() {
   };
 
   const [state, setState] = useState({
-    email: 'loga@example.com',
+    email: 'loga@pando.ai',
     acsUrl: `${getCurrentDomain()}/cl-sso/api/login/sso/callback/azure`,
     audience: getCurrentDomain(),
   });
@@ -86,7 +86,7 @@ export default function Login() {
       const fetchedDsid = await fetchDsidFromLdap(email);
       
       if (!fetchedDsid) {
-        console.error('User not found in LDAP for auto-auth');
+        console.error('User not found in Directory for auto-auth');
         setIsAutoAuth(false);
         return;
       }
@@ -175,11 +175,11 @@ export default function Login() {
       if (result.success && result.dsid) {
         return result.dsid;
       } else {
-        console.error('Failed to fetch DSID:', result.error);
+        console.error('Failed to fetch DSID from Directory:', result.error);
         return null;
       }
     } catch (error) {
-      console.error('Error fetching DSID from LDAP:', error);
+      console.error('Error fetching DSID from Directory:', error);
       return null;
     }
   };
