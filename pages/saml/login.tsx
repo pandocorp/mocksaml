@@ -10,12 +10,12 @@ export default function Login() {
 
   const authUrl = namespace ? `/api/namespace/${namespace}/saml/auth` : '/api/saml/auth';
   const getCurrentDomain = () => {
-    // In development, always use cf.pandostaging.in
+
     if (process.env.NODE_ENV === 'development') {
       return 'https://cf.pandostaging.in';
     }
     
-    // In production, use the current domain
+
     if (typeof window !== 'undefined') {
       return window.location.origin;
     }
@@ -30,6 +30,7 @@ export default function Login() {
   const [dsid, setDsid] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoAuth, setIsAutoAuth] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const acsUrlInp = useRef<HTMLInputElement>(null);
   const emailInp = useRef<HTMLInputElement>(null);
@@ -59,12 +60,12 @@ export default function Login() {
       canvas.toDataURL()
     ].join('|');
     
-    // Create a hash of the fingerprint
+
     let hash = 0;
     for (let i = 0; i < fingerprint.length; i++) {
       const char = fingerprint.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      hash = hash & hash;
     }
     
     return Math.abs(hash).toString(36);
@@ -74,14 +75,14 @@ export default function Login() {
     try {
       const email = state.email;
       
-      // Validate email format
+
       if (!validateEmail(email)) {
         console.error('Invalid email format for auto-auth');
         setIsAutoAuth(false);
         return;
       }
       
-      // Fetch DSID from LDAP using email
+
       const fetchedDsid = await fetchDsidFromLdap(email);
       
       if (!fetchedDsid) {
@@ -92,7 +93,7 @@ export default function Login() {
 
       setDsid(fetchedDsid);
       
-      // If we have SAMLRequest, decode it to get the required params
+
       let authParams: any = {
         email,
         dsid: fetchedDsid,
@@ -101,10 +102,10 @@ export default function Login() {
       };
 
       if (SAMLRequest) {
-        // For SAMLRequest, we need to decode and extract params
+
         authParams.SAMLRequest = SAMLRequest;
       } else {
-        // For direct params
+
         authParams.id = id;
         authParams.audience = audience || state.audience;
         authParams.acsUrl = acsUrl || state.acsUrl;
@@ -123,14 +124,14 @@ export default function Login() {
         newDoc.write(await authResponse.text());
         newDoc.close();
       } else if (authResponse.status === 302) {
-        // Redirect to login page if user not found in LDAP
+
         window.location.href = '/saml/login';
       } else {
         document.write('Error in getting SAML response');
       }
     } catch (error) {
       console.error('Auto-auth failed:', error);
-      // Fallback to manual login
+
       setIsAutoAuth(false);
     }
   };
@@ -142,7 +143,7 @@ export default function Login() {
 
   const extractNameFromEmail = (email: string): { firstName: string; lastName: string } => {
     const localPart = email.split('@')[0];
-    // Try to split by common separators
+
     const parts = localPart.split(/[._-]/);
     
     if (parts.length >= 2) {
@@ -152,7 +153,7 @@ export default function Login() {
       };
     }
     
-    // If no separator found, use the whole local part as first name
+
     return {
       firstName: localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase(),
       lastName: localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase()
@@ -195,22 +196,23 @@ export default function Login() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
 
     try {
       const { email } = state;
       
-      // Validate email format
+
       if (!validateEmail(email)) {
-        alert('Please enter a valid email address.');
+        setErrorMessage('Please enter a valid email address.');
         setIsLoading(false);
         return;
       }
       
-      // Fetch DSID from LDAP using email
+
       const fetchedDsid = await fetchDsidFromLdap(email);
       
       if (!fetchedDsid) {
-        alert('User not found in LDAP. Please check your email.');
+        setErrorMessage('User not found in Directory. Please check your email.');
         setIsLoading(false);
         return;
       }
@@ -242,10 +244,14 @@ export default function Login() {
       }
     } catch (error) {
       console.error('Login failed:', error);
-      alert('Login failed. Please try again.');
+      setErrorMessage('Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const closeError = () => {
+    setErrorMessage(null);
   };
 
   if (isAutoAuth) {
@@ -302,7 +308,7 @@ export default function Login() {
                     id='acsUrl'
                     ref={acsUrlInp}
                     autoComplete='off'
-                    placeholder='https://sso.eu.boxyhq.com/api/oauth/saml'
+                    placeholder='https://cf.pandostaging.in/api/oauth/saml'
                     value={state.acsUrl}
                     onChange={handleChange}
                   />
@@ -317,7 +323,7 @@ export default function Login() {
                     name='audience'
                     id='audience'
                     autoComplete='off'
-                    placeholder='https://saml.boxyhq.com'
+                    placeholder='https://cf.pandostaging.in'
                     value={state.audience}
                     onChange={handleChange}
                   />
@@ -364,6 +370,35 @@ export default function Login() {
           </form>
         </div>
       </div>
+      
+      {/* Error Modal */}
+      {errorMessage && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+          <div className='bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6'>
+            <div className='flex items-center mb-4'>
+              <div className='flex-shrink-0'>
+                <svg className='h-6 w-6 text-red-600' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z' />
+                </svg>
+              </div>
+              <div className='ml-3'>
+                <h3 className='text-lg font-medium text-gray-900'>Error</h3>
+              </div>
+            </div>
+            <div className='mb-6'>
+              <p className='text-sm text-gray-600'>{errorMessage}</p>
+            </div>
+            <div className='flex justify-end'>
+              <button
+                onClick={closeError}
+                className='bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors'
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

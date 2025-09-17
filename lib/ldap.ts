@@ -57,7 +57,7 @@ class AppleDirectoryService {
 
     const client = new Client(this.ldapConfig);
     try {
-      // Use serviceuser which has search capabilities
+
       await client.bind('cn=serviceuser,dc=glauth,dc=com', '');
       const escapedDsId = this.escapeLDAP(alternateDsId);
       const filter = `(alternatedsid=${escapedDsId})`;
@@ -110,7 +110,7 @@ class AppleDirectoryService {
 
     const client = new Client(this.ldapConfig);
     try {
-      // Use serviceuser which has search capabilities
+
       await client.bind('cn=serviceuser,dc=glauth,dc=com', '');
       const escapedEmployeeId = this.escapeLDAP(employeeId);
       const filter = `(employeeid=${escapedEmployeeId})`;
@@ -163,7 +163,7 @@ class AppleDirectoryService {
 
     const client = new Client(this.ldapConfig);
     try {
-      // Use serviceuser which has search capabilities
+
       await client.bind('cn=serviceuser,dc=glauth,dc=com', '');
       const escapedEmail = this.escapeLDAP(email);
       const filter = `(mail=${escapedEmail})`;
@@ -210,10 +210,10 @@ export interface LDAPUser {
   alternateDsId?: string;
 }
 
-// Create singleton instance
+
 const appleDirectoryService = new AppleDirectoryService();
 
-// Export functions for backward compatibility
+
 export async function searchUserByProfileId(profileId: string): Promise<LDAPUser | null> {
   try {
     return await appleDirectoryService.fetchAppleDirectoryEntries(profileId);
@@ -241,5 +241,5 @@ export async function searchUserByEmployeeId(employeeId: string): Promise<LDAPUs
   }
 }
 
-// Export the service class
+
 export { AppleDirectoryService };
