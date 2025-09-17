@@ -9,23 +9,33 @@ export default function Login() {
   const { id, audience, acsUrl, providerName, relayState, namespace, SAMLRequest } = router.query;
 
   const authUrl = namespace ? `/api/namespace/${namespace}/saml/auth` : '/api/saml/auth';
-  const [state, setState] = useState({
-    username: 'Loga',
-    dsid: '',
-    acsUrl: 'https://cf.pandostaging.in/cl-sso/api/login/sso/callback/azure',
-    audience: 'https://cf.pandostaging.in',
-  });
-  const [isAutoAuth, setIsAutoAuth] = useState(false);
+  const getCurrentDomain = () => {
+    // In development, always use cf.pandostaging.in
+    if (process.env.NODE_ENV === 'development') {
+      return 'https://cf.pandostaging.in';
+    }
+    
+    // In production, use the current domain
+    if (typeof window !== 'undefined') {
+      return window.location.origin;
+    }
+    return 'https://cf.pandostaging.in';
+  };
 
-  const domain = 'example.com';
+  const [state, setState] = useState({
+    email: 'loga@example.com',
+    acsUrl: `${getCurrentDomain()}/cl-sso/api/login/sso/callback/azure`,
+    audience: getCurrentDomain(),
+  });
+  const [dsid, setDsid] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAutoAuth, setIsAutoAuth] = useState(false);
 
   const acsUrlInp = useRef<HTMLInputElement>(null);
   const emailInp = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Auto-authenticate if we have SAMLRequest or required params
     if ((SAMLRequest || (acsUrl && audience && id)) && !isAutoAuth) {
-      setIsAutoAuth(true);
       handleAutoAuth();
     } else if (acsUrl && emailInp.current) {
       emailInp.current.focus();
@@ -36,16 +46,56 @@ export default function Login() {
     }
   }, [SAMLRequest, acsUrl, audience, id, isAutoAuth]);
 
+  const generateBrowserFingerprint = (): string => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx?.fillText('Browser fingerprint', 10, 10);
+    
+    const fingerprint = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + 'x' + screen.height,
+      new Date().getTimezoneOffset(),
+      canvas.toDataURL()
+    ].join('|');
+    
+    // Create a hash of the fingerprint
+    let hash = 0;
+    for (let i = 0; i < fingerprint.length; i++) {
+      const char = fingerprint.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    return Math.abs(hash).toString(36);
+  };
+
   const handleAutoAuth = async () => {
     try {
-          // Get profile identifier from system
-          const response = await fetch('/api/saml/profile-identifier');
-      const { profileIdentifier } = await response.json();
+      const email = state.email;
+      
+      // Validate email format
+      if (!validateEmail(email)) {
+        console.error('Invalid email format for auto-auth');
+        setIsAutoAuth(false);
+        return;
+      }
+      
+      // Fetch DSID from LDAP using email
+      const fetchedDsid = await fetchDsidFromLdap(email);
+      
+      if (!fetchedDsid) {
+        console.error('User not found in LDAP for auto-auth');
+        setIsAutoAuth(false);
+        return;
+      }
+
+      setDsid(fetchedDsid);
       
       // If we have SAMLRequest, decode it to get the required params
       let authParams: any = {
-        email: `${state.username}@${domain}`,
-        dsid: profileIdentifier || state.dsid,
+        email,
+        dsid: fetchedDsid,
         providerName,
         relayState,
       };
@@ -85,6 +135,54 @@ export default function Login() {
     }
   };
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const extractNameFromEmail = (email: string): { firstName: string; lastName: string } => {
+    const localPart = email.split('@')[0];
+    // Try to split by common separators
+    const parts = localPart.split(/[._-]/);
+    
+    if (parts.length >= 2) {
+      return {
+        firstName: parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase(),
+        lastName: parts[1].charAt(0).toUpperCase() + parts[1].slice(1).toLowerCase()
+      };
+    }
+    
+    // If no separator found, use the whole local part as first name
+    return {
+      firstName: localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase(),
+      lastName: localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase()
+    };
+  };
+
+  const fetchDsidFromLdap = async (email: string): Promise<string | null> => {
+    try {
+      const response = await fetch('/api/saml/get-dsid', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.dsid) {
+        return result.dsid;
+      } else {
+        console.error('Failed to fetch DSID:', result.error);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching DSID from LDAP:', error);
+      return null;
+    }
+  };
+
   const handleChange = (e: FormEvent<HTMLInputElement | HTMLSelectElement>): void => {
     const { name, value } = e.currentTarget;
 
@@ -96,32 +194,57 @@ export default function Login() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    const { username, dsid } = state;
+    try {
+      const { email } = state;
+      
+      // Validate email format
+      if (!validateEmail(email)) {
+        alert('Please enter a valid email address.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch DSID from LDAP using email
+      const fetchedDsid = await fetchDsidFromLdap(email);
+      
+      if (!fetchedDsid) {
+        alert('User not found in LDAP. Please check your email.');
+        setIsLoading(false);
+        return;
+      }
 
-    const response = await fetch(authUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: `${username}@${domain}`,
-        dsid,
-        id,
-        audience: audience || state.audience,
-        acsUrl: acsUrl || state.acsUrl,
-        providerName,
-        relayState,
-      }),
-    });
+      setDsid(fetchedDsid);
 
-    if (response.ok) {
-      const newDoc = document.open('text/html', 'replace');
+      const response = await fetch(authUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          dsid: fetchedDsid,
+          id,
+          audience: audience || state.audience,
+          acsUrl: acsUrl || state.acsUrl,
+          providerName,
+          relayState,
+        }),
+      });
 
-      newDoc.write(await response.text());
-      newDoc.close();
-    } else {
-      document.write('Error in getting SAML response');
+      if (response.ok) {
+        const newDoc = document.open('text/html', 'replace');
+        newDoc.write(await response.text());
+        newDoc.close();
+      } else {
+        document.write('Error in getting SAML response');
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+      alert('Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -202,64 +325,41 @@ export default function Login() {
               </>
             ) : null}
 
-            <div className='grid grid-cols-2 gap-3'>
-              <div className='space-y-2'>
-                <label className='block text-sm font-medium text-gray-700'>Email</label>
-                <input
-                  name='username'
-                  id='username'
-                  ref={emailInp}
-                  autoComplete='off'
-                  type='text'
-                  placeholder='jackson'
-                  value={state.username}
-                  onChange={handleChange}
-                  className='w-full px-3 py-2 text-sm border rounded-md focus:ring-1 focus:ring-emerald-500'
-                />
-              </div>
-
-              <div className='space-y-2'>
-                <label className='block text-sm font-medium text-gray-700'>DSID</label>
-                <input
-                  name='dsid'
-                  id='dsid'
-                  autoComplete='off'
-                  type='text'
-                  placeholder='Enter DSID'
-                  value={state.dsid}
-                  onChange={handleChange}
-                  className='w-full px-3 py-2 text-sm border rounded-md focus:ring-1 focus:ring-emerald-500'
-                />
-              </div>
-            </div>
-
             <div className='space-y-2'>
-              <label className='block text-sm font-medium text-gray-700'>Password</label>
+              <label className='block text-sm font-medium text-gray-700'>Email</label>
               <input
-                id='password'
+                name='email'
+                id='email'
+                ref={emailInp}
                 autoComplete='off'
-                type='password'
-                defaultValue='iamthemaster'
+                type='email'
+                placeholder='user@yourdomain.com'
+                value={state.email}
+                onChange={handleChange}
                 className='w-full px-3 py-2 text-sm border rounded-md focus:ring-1 focus:ring-emerald-500'
               />
-              <div className='flex flex-row justify-between text-[13px] text-blue-600'>
-                <a
-                  href={`/api${namespace ? `/namespace/${namespace}` : ''}/saml/metadata?download=true`}
-                  className='hover:underline hover:text-blue-800'>
-                  Download Metadata
-                </a>
-                <a
-                  href={`/api${namespace ? `/namespace/${namespace}` : ''}/saml/metadata`}
-                  className='hover:underline hover:text-blue-800'
-                  target='_blank'
-                  rel='noopener noreferrer'>
-                  Metadata URL
-                </a>
-              </div>
             </div>
 
-            <button className='w-full bg-black text-white text-sm font-medium py-2 rounded-md hover:bg-gray-800 transition-colors'>
-              Sign In
+            <div className='flex flex-row justify-between text-[13px] text-blue-600'>
+              <a
+                href={`/api${namespace ? `/namespace/${namespace}` : ''}/saml/metadata?download=true`}
+                className='hover:underline hover:text-blue-800'>
+                Download Metadata
+              </a>
+              <a
+                href={`/api${namespace ? `/namespace/${namespace}` : ''}/saml/metadata`}
+                className='hover:underline hover:text-blue-800'
+                target='_blank'
+                rel='noopener noreferrer'>
+                Metadata URL
+              </a>
+            </div>
+
+            <button 
+              type='submit'
+              disabled={isLoading}
+              className='w-full bg-black text-white text-sm font-medium py-2 rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+              {isLoading ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
         </div>

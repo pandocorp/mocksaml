@@ -4,14 +4,21 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import type { User } from 'types';
 import saml from '@boxyhq/saml20';
 import { getEntityId } from 'lib/entity-id';
-import { searchUserByProfileId, searchUserByEmail, searchUserByEmployeeId } from 'lib/ldap';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     const { email, audience, acsUrl, id, relayState, dsid, SAMLRequest } = req.body;
 
-    if (!email.endsWith('@example.com') && !email.endsWith('@example.org')) {
-      res.status(403).send(`${email} denied access`);
+    // Basic email validation - you can customize this based on your requirements
+    if (!email || !email.includes('@')) {
+      res.status(400).send('Valid email is required');
+      return;
+    }
+
+    // Validate required fields
+    if (!dsid) {
+      res.status(400).send('DSID is required');
+      return;
     }
 
     // Handle SAMLRequest if provided
@@ -34,44 +41,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-        // Try to get user from LDAP using profile ID (dsid) as alternateDsId
-        let ldapUser = null;
-        if (dsid) {
-          try {
-            ldapUser = await searchUserByProfileId(dsid);
-          } catch (error) {
-            console.error('LDAP search by profile ID failed:', error);
-          }
-        }
+    // Extract name from email
+    const extractNameFromEmail = (email: string): { firstName: string; lastName: string } => {
+      const localPart = email.split('@')[0];
+      // Try to split by common separators
+      const parts = localPart.split(/[._-]/);
+      
+      if (parts.length >= 2) {
+        return {
+          firstName: parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase(),
+          lastName: parts[1].charAt(0).toUpperCase() + parts[1].slice(1).toLowerCase()
+        };
+      }
+      
+      // If no separator found, use the whole local part as first name
+      return {
+        firstName: localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase(),
+        lastName: localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase()
+      };
+    };
 
-        // If no user found with alternateDsId, try searching by employeeid
-        if (!ldapUser && dsid) {
-          try {
-            ldapUser = await searchUserByEmployeeId(dsid);
-          } catch (error) {
-            console.error('LDAP search by employee ID failed:', error);
-          }
-        }
-
-        // If no user found with either method, redirect to login page
-        if (!ldapUser) {
-          res.status(302).redirect('/saml/login');
-          return;
-        }
-
-    // Use LDAP data and replace dsid with employeeID
-    const userId = ldapUser.uid || createHash('sha256').update(email).digest('hex');
-    const firstName = ldapUser.givenName || email.split('@')[0];
-    const lastName = ldapUser.sn || email.split('@')[0];
-    const userEmail = ldapUser.mail || email;
-    const finalDsid = ldapUser.employeeID || dsid;
+    // Create user object with provided data (DSID already validated from frontend)
+    const userId = createHash('sha256').update(email).digest('hex');
+    const { firstName, lastName } = extractNameFromEmail(email);
 
     const user: User = {
       id: userId,
-      email: userEmail,
+      email,
       firstName,
       lastName,
-      DSID: finalDsid,
+      DSID: dsid,
     };
 
     const xmlSigned = await saml.createSAMLResponse({
